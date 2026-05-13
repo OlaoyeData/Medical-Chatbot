@@ -1,0 +1,278 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>MediBot – Health Assistant</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=DM+Serif+Display:ital@0;1&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+
+  <!-- Header -->
+  <header class="header">
+    <div class="header-inner">
+      <button class="icon-btn" id="newChatBtn" title="New chat" aria-label="New chat">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M12 5v14M5 12h14"/>
+        </svg>
+      </button>
+      <div class="brand">
+        <span class="brand-name">MediBot</span>
+        <span class="brand-tagline">Here to support your health questions</span>
+      </div>
+      <button class="icon-btn" title="Account" aria-label="Account">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="12" cy="8" r="4"/>
+          <path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/>
+        </svg>
+      </button>
+    </div>
+  </header>
+
+  <!-- Chat Window (completely dynamic, no dummy messages) -->
+  <main class="chat-main">
+    <div class="chat-container" id="chatContainer">
+      <!-- All messages will be appended here by JavaScript -->
+      <!-- Typing indicator (hidden by default) -->
+      <div class="message-row bot-row typing-row" id="typingIndicator" style="display:none;">
+        <div class="avatar bot-avatar">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M12 2a4 4 0 0 1 4 4v1h1a3 3 0 0 1 3 3v8a3 3 0 0 1-3 3H7a3 3 0 0 1-3-3V10a3 3 0 0 1 3-3h1V6a4 4 0 0 1 4-4z"/>
+            <circle cx="9" cy="13" r="1" fill="currentColor"/>
+            <circle cx="15" cy="13" r="1" fill="currentColor"/>
+          </svg>
+        </div>
+        <div class="bubble bot-bubble typing-bubble">
+          <span class="dot"></span>
+          <span class="dot"></span>
+          <span class="dot"></span>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <!-- Input Bar -->
+  <footer class="input-footer">
+    <form class="input-form" id="chatForm" onsubmit="handleSubmit(event)">
+      <input
+        type="text"
+        id="userInput"
+        class="input-field"
+        placeholder="Tell me how you're feeling…"
+        autocomplete="off"
+        aria-label="Type your message"
+      />
+      <button type="submit" class="send-btn" aria-label="Send message">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+          <line x1="22" y1="2" x2="11" y2="13"/>
+          <polygon points="22 2 15 22 11 13 2 9 22 2"/>
+        </svg>
+      </button>
+    </form>
+    <p class="disclaimer">
+      This chatbot provides general health information only and does not replace professional medical advice.
+    </p>
+    <nav class="footer-links">
+      <a href="#">Privacy Policy</a>
+      <a href="#">Terms of Service</a>
+      <a href="#">Support</a>
+    </nav>
+  </footer>
+
+  <script>
+    // ---------- Helper: scroll to bottom ----------
+    function scrollToBottom() {
+      const container = document.getElementById('chatContainer');
+      container.scrollTop = container.scrollHeight;
+    }
+
+    // ---------- Escape HTML to prevent XSS ----------
+    function escapeHTML(str) {
+      return str.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+    }
+
+    // ---------- Add a date separator (if needed) ----------
+    function appendDateSeparator(label = 'Today') {
+      const container = document.getElementById('chatContainer');
+      // Avoid duplicate separators (optional check)
+      const last = container.lastElementChild;
+      if (last && last.classList.contains('date-separator')) return;
+
+      const sep = document.createElement('div');
+      sep.className = 'date-separator';
+      sep.innerHTML = `<span>${escapeHTML(label)}</span>`;
+      container.appendChild(sep);
+    }
+
+    // ---------- Append a user message ----------
+    function appendUserMessage(text) {
+      const container = document.getElementById('chatContainer');
+      const row = document.createElement('div');
+      row.className = 'message-row user-row fade-in';
+      row.innerHTML = `
+        <div class="bubble user-bubble">${escapeHTML(text)}</div>
+        <div class="avatar user-avatar">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/>
+          </svg>
+        </div>`;
+      container.appendChild(row);
+      scrollToBottom();
+    }
+
+    // ---------- Append a bot message (text only) ----------
+    function appendBotMessage(text) {
+      const container = document.getElementById('chatContainer');
+      const row = document.createElement('div');
+      row.className = 'message-row bot-row fade-in';
+      row.innerHTML = `
+        <div class="avatar bot-avatar">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M12 2a4 4 0 0 1 4 4v1h1a3 3 0 0 1 3 3v8a3 3 0 0 1-3 3H7a3 3 0 0 1-3-3V10a3 3 0 0 1 3-3h1V6a4 4 0 0 1 4-4z"/>
+            <circle cx="9" cy="13" r="1" fill="currentColor"/><circle cx="15" cy="13" r="1" fill="currentColor"/>
+          </svg>
+        </div>
+        <div class="bubble bot-bubble">${escapeHTML(text)}</div>`;
+      container.appendChild(row);
+      scrollToBottom();
+    }
+
+    // ---------- Append a bot message with optional quick replies ----------
+    function appendBotMessageWithQuickReplies(text, quickReplies = []) {
+      const container = document.getElementById('chatContainer');
+      const row = document.createElement('div');
+      row.className = 'message-row bot-row fade-in';
+
+      // Build bot block with bubble and optionally quick replies
+      let blockHTML = `
+        <div class="avatar bot-avatar">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M12 2a4 4 0 0 1 4 4v1h1a3 3 0 0 1 3 3v8a3 3 0 0 1-3 3H7a3 3 0 0 1-3-3V10a3 3 0 0 1 3-3h1V6a4 4 0 0 1 4-4z"/>
+            <circle cx="9" cy="13" r="1" fill="currentColor"/><circle cx="15" cy="13" r="1" fill="currentColor"/>
+          </svg>
+        </div>
+        <div class="bot-block">
+          <div class="bubble bot-bubble">${escapeHTML(text)}</div>`;
+
+      if (quickReplies.length > 0) {
+        blockHTML += `<div class="quick-replies">`;
+        quickReplies.forEach(reply => {
+          blockHTML += `<button class="quick-reply-btn" onclick="sendQuickReply(this)">${escapeHTML(reply)}</button>`;
+        });
+        blockHTML += `</div>`;
+      }
+
+      blockHTML += `</div>`; // close bot-block
+      row.innerHTML = blockHTML;
+      container.appendChild(row);
+      scrollToBottom();
+    }
+
+    // ---------- Show / hide typing indicator ----------
+    function showTyping() {
+      document.getElementById('typingIndicator').style.display = 'flex';
+      scrollToBottom();
+    }
+
+    function hideTyping() {
+      document.getElementById('typingIndicator').style.display = 'none';
+    }
+
+    // ---------- Quick reply handler (now real fetch) ----------
+    function sendQuickReply(btn) {
+      const text = btn.textContent.trim();
+      const quickRepliesDiv = btn.closest('.quick-replies');
+      if (quickRepliesDiv) quickRepliesDiv.remove();
+
+      appendUserMessage(text);
+      showTyping();
+
+      fetch('/chat', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ message: text })
+      })
+      .then(r => r.json())
+      .then(data => {
+        hideTyping();
+        // The server can return optional quick_replies
+        const replyText = data.reply || "I'm here to help. Could you tell me more?";
+        const quickReplies = data.quick_replies || [];
+        if (quickReplies.length > 0) {
+          appendBotMessageWithQuickReplies(replyText, quickReplies);
+        } else {
+          appendBotMessage(replyText);
+        }
+      })
+      .catch(() => {
+        hideTyping();
+        appendBotMessage("I'm having trouble connecting right now. Please try again shortly.");
+      });
+    }
+
+    // ---------- Main form submit ----------
+    function handleSubmit(e) {
+      e.preventDefault();
+      const input = document.getElementById('userInput');
+      const text = input.value.trim();
+      if (!text) return;
+      input.value = '';
+      appendUserMessage(text);
+      showTyping();
+
+      fetch('/chat', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ message: text })
+      })
+      .then(r => r.json())
+      .then(data => {
+        hideTyping();
+        const replyText = data.reply || "I'm here to help. Could you tell me more?";
+        const quickReplies = data.quick_replies || [];
+        if (quickReplies.length > 0) {
+          appendBotMessageWithQuickReplies(replyText, quickReplies);
+        } else {
+          appendBotMessage(replyText);
+        }
+      })
+      .catch(() => {
+        hideTyping();
+        appendBotMessage("I'm having trouble connecting right now. Please try again shortly.");
+      });
+    }
+
+    // ---------- Start a new chat ----------
+    function startNewChat() {
+      // Clear all messages (keep typing indicator)
+      const container = document.getElementById('chatContainer');
+      container.querySelectorAll('.message-row:not(.typing-row), .date-separator').forEach(el => el.remove());
+
+      // Optionally tell the server to reset the session
+      fetch('/newchat', { method: 'POST' }).catch(() => {});
+
+      // Show the welcome message again
+      appendBotMessage("Hello! I'm MediBot. How are you feeling today? I can help answer general health questions or guide you to the right resources.");
+    }
+
+    // ---------- Initialize on page load ----------
+    function initializeChat() {
+      // Add a date separator and the default welcome message
+      appendDateSeparator('Today');
+      appendBotMessage("Hello! I'm MediBot. How are you feeling today? I can help answer general health questions or guide you to the right resources.");
+      scrollToBottom();
+    }
+
+    // Attach event listeners
+    document.getElementById('newChatBtn').addEventListener('click', startNewChat);
+
+    // Start the chat
+    initializeChat();
+
+  </script>
+
+</body>
+</html>
