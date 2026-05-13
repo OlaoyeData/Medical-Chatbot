@@ -223,10 +223,10 @@
       appendUserMessage(text);
       showTyping();
 
-      fetch('/chat', {
+      fetch('/get', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ message: text })
+        body: JSON.stringify({ msg: text })
       })
       .then(r => r.json())
       .then(data => {

@@ -33,8 +33,8 @@ retriever = docsearch.as_retriever(search_type="similarity", search_kwargs={"k":
 chatModel = ChatGoogleGenerativeAI(model="gemini-2.5-flash")
 prompt = ChatPromptTemplate.from_messages(
     [
-        {"system", system_prompt},
-        {"human", "{input}"},
+        ("system", system_prompt),
+        ("human", "{input}"),
     ]
 )
 
@@ -47,12 +47,12 @@ def index():
 
 @app.route("/get", methods=["GET", "POST"])
 def chat():
-    msg = request.form["msg"]
-    input = msg
-    print(input)
+    data = request.get_json()          # read JSON body
+    msg = data.get("msg", "")
+    print(msg)
     response = rag_chain.invoke({"input": msg})
     print("Response : ", response["answer"])
-    return str(response["answer"])
+    return jsonify({"reply": response["answer"]})
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', debug=True)
